@@ -8,36 +8,64 @@ from datetime import date
 import re
 from tqdm import tqdm
 import sys
+import os
 
 baseurl = 'https://zjy2.icve.com.cn/prod-api/spoc/'
 
 session = requests.session()
 
-au = input("请输入Token(获取Token方法详见图片):")
-
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-    'Authorization': au
-}
+au = ''
 
 year = str(date.today().year)
+flag = 0
+filename = 'token'
+
+def get_headers():
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Authorization': au
+    }
+
+def is_token():
+    global au
+    if os.path.exists(filename):
+        with open(filename, 'r', encoding='utf-8') as f:
+            au = f.read().strip()
+            print("本地已存在Token")
+    else:
+        print("本地未找到Token")
+        au = input("请输入Token(获取Token方法详见图片):").strip()
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(au)
 
 
 def get_classList():
+    global flag
     url = baseurl + f"courseInfoStudent/myCourseList?pageNum=1&pageSize=1000&isCriteria=1"
-    res = session.get(url, headers=headers)
+    res = session.get(url, headers=get_headers())
     data = res.json()
+
+    while data['code'] != 200:
+        print('Token已失效,请重新获取')
+        if os.path.exists(filename):
+            os.remove(filename)
+        is_token()
+        res = session.get(url, headers=get_headers())
+        data = res.json()
+
     courseName = []
     datalist = data["rows"]
     for data in datalist:
         time = data["termCode"][:4]
-        if (time != year):
+        if time != year:
             break
         courseName.append(data["courseName"])
 
-    print("本学期的课程有:\n")
-    for i, v in enumerate(courseName):
-        print(f"{i + 1}. {v}")
+    if flag == 0:
+        print("本学期的课程有:\n")
+        for i, v in enumerate(courseName):
+            print(f"{i + 1}. {v}")
+        flag = 1
 
     res_id = input("\n请输入需要提交课程的id(输入q退出):")
     if res_id.lower() == 'q':
@@ -57,7 +85,7 @@ def is_file(name):
 
 def get_project(courseId, courseInfoId, classId, parent_id=0, level=1):
     url = baseurl + f"courseDesign/study/record?courseId={courseId}&courseInfoId={courseInfoId}&parentId={parent_id}&level={level}&classId={classId}"
-    res = session.get(url, headers=headers)
+    res = session.get(url, headers=get_headers())
     data = res.json()
     if not data:
         return []
@@ -115,10 +143,12 @@ def send_progress():
             date = {
                 "param": param
             }
-            session.post(url, headers=headers, json=date)
+            session.post(url, headers=get_headers(), json=date)
     else:
         print("暂无内容")
 
 
 if __name__ == '__main__':
-    send_progress()
+    is_token()
+    while 1:
+        send_progress()
