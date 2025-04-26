@@ -80,7 +80,7 @@ def get_classList():
 
 
 def is_file(name):
-    return re.search(r"\.\w{2,5}$", name) is not None
+    return re.search(r"\.([a-zA-Z0-9]{2,5})$", name) is not None
 
 
 def get_project(courseId, courseInfoId, classId, parent_id=0, level=1):
@@ -135,8 +135,9 @@ def send_progress():
     courseId, courseInfoId, classId = get_classList()
     collected_ids = get_project(courseId, courseInfoId, classId)
     print("获取完成正在提交进度")
+
     if collected_ids:
-        for id in tqdm(collected_ids, desc="提交进度"):
+        for id in tqdm(collected_ids, ncols=100, smoothing=0.1, desc="🔥 提交进度中..."):
             url = baseurl + "studyRecord/update"
             data_str = f'{{"courseInfoId":"{courseInfoId}","classId":"{classId}","studyTime":5,"sourceId":"{id}","totalNum":999,"actualNum":999,"lastNum":1}}'
             param = get_param(au, data_str)
@@ -144,6 +145,7 @@ def send_progress():
                 "param": param
             }
             session.post(url, headers=get_headers(), json=date)
+
     else:
         print("暂无内容")
 
